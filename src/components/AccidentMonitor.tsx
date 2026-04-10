@@ -17,9 +17,10 @@ import { saveIncidentToFirestore } from "@/lib/save-incident";
 const ALPHA = 0.15;
 const NOISE_FLOOR_LIN = 0.15;
 const NOISE_FLOOR_GYRO = 8.0;
-const IMPACT_THRESHOLD_LIN = 5.8;
-const IMPACT_THRESHOLD_TOTAL = 8.0;
+const IMPACT_THRESHOLD_LIN = 8.5; // Increased from 5.8 to reduce false positives
+const IMPACT_THRESHOLD_TOTAL = 12.0; // Increased from 8.0 to reduce false positives
 const STILLNESS_THRESHOLD = 0.40;
+const MIN_IMPACT_DURATION = 150; // Minimum duration in ms for valid impact
 
 // --- Adaptive countdown logic ---
 // Returns countdown seconds based on impact severity + post-impact stillness
@@ -70,6 +71,8 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
   const [locationUpdates, setLocationUpdates] = useState(false);
 
   const lastImpactTime = useRef(0);
+  const impactStartTime = useRef(0);
+  const highImpactDetected = useRef(false);
   const stillnessBuffer = useRef<number[]>([]);
   const filteredAcc = useRef(1.0);
   const filteredLin = useRef(0.0);
@@ -244,9 +247,23 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
 
         if (detectionStateRef.current === 'IDLE' &&
           (filteredLin.current > IMPACT_THRESHOLD_LIN || filteredAcc.current > IMPACT_THRESHOLD_TOTAL)) {
-          if (now - lastImpactTime.current > 4000) {
+          // Start tracking high impact
+          if (!highImpactDetected.current) {
+            highImpactDetected.current = true;
+            impactStartTime.current = now;
+          }
+          
+          // Check if impact has been sustained for minimum duration
+          const impactDuration = now - impactStartTime.current;
+          if (impactDuration >= MIN_IMPACT_DURATION && now - lastImpactTime.current > 4000) {
             lastImpactTime.current = now;
+            highImpactDetected.current = false;
             processPotentialCrash(filteredLin.current, filteredGyro.current);
+          }
+        } else {
+          // Reset if impact drops below threshold
+          if (filteredLin.current < IMPACT_THRESHOLD_LIN * 0.5 && filteredAcc.current < IMPACT_THRESHOLD_TOTAL * 0.5) {
+            highImpactDetected.current = false;
           }
         }
         if (detectionStateRef.current === 'IMPACT_DETECTED') {
@@ -336,7 +353,7 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
         {/* Top content */}
         <div className="flex-1 flex flex-col justify-center px-8 pt-16 space-y-10">
           <div className="space-y-2 animate-in slide-in-from-top duration-500">
-            <h1 className="text-[2rem] font-semibold leading-tight">Car crash detected</h1>
+            <h1 className="text-[2rem] font-semibold leading-tight">Crash detected</h1>
             <p className="text-zinc-400 text-base leading-snug">
               Calling emergency contacts and sharing location in
             </p>
