@@ -7,10 +7,11 @@ import { ShieldCheck, AlertTriangle, Zap, Phone, MessageCircle, Square, Play, Ro
 import { ResponsiveContainer, ComposedChart, CartesianGrid, YAxis, Area, Line } from 'recharts';
 import { WorkerProfile } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { triggerWhatsApp, triggerCall } from "@/lib/sos";
+import { triggerWhatsApp, triggerCall, startLocationTracking, stopLocationTracking } from "@/lib/sos";
 import { generateDynamicEmergencyMessage } from "@/ai/flows/generate-dynamic-emergency-message";
 import { flashlightBurst, stopFlashlight } from "@/lib/flashlight";
 import { triggerHospitalSOS, buildQRUrl, sendSOSSms } from "@/lib/hospital-sos";
+import { saveIncidentToFirestore } from "@/lib/save-incident";
 
 // --- Sensor constants ---
 const ALPHA = 0.15;
@@ -122,14 +123,14 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
           );
         });
         getGps().then(async (locationLink) => {
-          // 1. Auto SMS via Fast2SMS — works without user tap
-          try {
-            const res = await sendSOSSms(profile, 'accident', locationLink);
-            toast({ title: "✅ SMS Sent", description: `Emergency SMS sent to ${profile.contacts?.[0]?.phone}` });
-          } catch (err: any) {
-            toast({ title: "SMS Failed", description: err?.message ?? "Check Vercel logs", variant: "destructive" });
-          }
-          // 2. Hospital SOS (opens maps + calls 108)
+          const match = locationLink.match(/q=([\d.-]+),([\d.-]+)/);
+          const lat = match ? parseFloat(match[1]) : 0;
+          const lng = match ? parseFloat(match[2]) : 0;
+          // 1. Save to Firestore — responder dashboard picks this up live
+          saveIncidentToFirestore(profile, 'accident', locationLink, lat, lng);
+          // 2. Auto SMS
+          sendSOSSms(profile, 'accident', locationLink).catch(() => {});
+          // 3. Hospital SOS
           triggerHospitalSOS(profile);
         });
       }
@@ -213,6 +214,8 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
     setPermissionError(null);
     const startListeners = () => {
       setIsMonitoring(true);
+      // Start tracking location immediately when monitoring begins
+      startLocationTracking();
       const handleMotion = (event: DeviceMotionEvent) => {
         const acc = event.accelerationIncludingGravity;
         const lin = event.acceleration;
@@ -270,6 +273,7 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
     stopAlarmRef.current?.();
     stopFlashlight();
     stopLocationUpdates();
+    stopLocationTracking(); // Stop location tracking when monitoring stops
     setIsMonitoring(false); setDetectionState('IDLE');
     setCurrentSensors({ acc: 1.0, gyro: 0.0, linear: 0.0 });
     setSensorData([]); setLastPrediction(null);
@@ -299,8 +303,14 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
         { timeout: 5000, enableHighAccuracy: true }
       );
     });
-    getGps().then((loc) => sendSOSSms(profile, 'panic', loc));
-    toast({ variant: "destructive", title: "Panic SOS Active — SMS Sent" });
+    getGps().then((loc) => {
+      const match = loc.match(/q=([\d.-]+),([\d.-]+)/);
+      const lat = match ? parseFloat(match[1]) : 0;
+      const lng = match ? parseFloat(match[2]) : 0;
+      saveIncidentToFirestore(profile, 'panic', loc, lat, lng);
+      sendSOSSms(profile, 'panic', loc).catch(() => {});
+    });
+    toast({ variant: "destructive", title: "Panic SOS Active" });
   };
 
   const contact = profile.contacts?.[0];
@@ -309,10 +319,10 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
   if (detectionState === 'IMPACT_DETECTED') {
     return (
       <div className="fixed inset-0 z-50 bg-yellow-500 flex flex-col items-center justify-center animate-pulse">
-        <div className="text-black text-center space-y-4 p-8">
-          <Zap className="h-20 w-20 mx-auto" />
-          <h1 className="text-4xl font-black uppercase">Impact Detected</h1>
-          <p className="text-lg font-bold opacity-70">Analyzing crash severity...</p>
+        <div className="text-black text-center space-y-4 p-8 animate-in zoom-in duration-300">
+          <Zap className="h-20 w-20 mx-auto animate-bounce" />
+          <h1 className="text-4xl font-black uppercase animate-in slide-in-from-bottom duration-300 delay-100">Impact Detected</h1>
+          <p className="text-lg font-bold opacity-70 animate-in fade-in duration-300 delay-200">Analyzing crash severity...</p>
         </div>
       </div>
     );
@@ -322,10 +332,10 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
   if (detectionState === 'VERIFYING') {
     const circumference = 2 * Math.PI * 54;
     return (
-      <div className="fixed inset-0 z-50 bg-[#1a1a1a] flex flex-col text-white" style={{ fontFamily: 'system-ui, sans-serif' }}>
+      <div className="fixed inset-0 z-50 bg-[#1a1a1a] flex flex-col text-white animate-in fade-in duration-300" style={{ fontFamily: 'system-ui, sans-serif' }}>
         {/* Top content */}
         <div className="flex-1 flex flex-col justify-center px-8 pt-16 space-y-10">
-          <div className="space-y-2">
+          <div className="space-y-2 animate-in slide-in-from-top duration-500">
             <h1 className="text-[2rem] font-semibold leading-tight">Car crash detected</h1>
             <p className="text-zinc-400 text-base leading-snug">
               Calling emergency contacts and sharing location in
@@ -333,7 +343,7 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
           </div>
 
           {/* Big circle timer */}
-          <div className="flex flex-col items-center gap-6">
+          <div className="flex flex-col items-center gap-6 animate-in zoom-in duration-500 delay-200">
             <div className="relative w-52 h-52">
               <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                 <circle cx="60" cy="60" r="54" fill="none" stroke="#2a2a2a" strokeWidth="5" />
@@ -346,7 +356,7 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
                 />
               </svg>
               <div className="absolute inset-0 flex items-center justify-center">
-                <span className="text-7xl font-light tabular-nums">{countdown}</span>
+                <span className="text-7xl font-light tabular-nums animate-pulse">{countdown}</span>
               </div>
             </div>
 
@@ -361,12 +371,12 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
         </div>
 
         {/* Bottom buttons — pill style */}
-        <div className="px-6 pb-12 space-y-3">
+        <div className="px-6 pb-12 space-y-3 animate-in slide-in-from-bottom duration-500 delay-300">
           <button
             onClick={handleImSafe}
-            className="w-full h-16 rounded-full bg-[#2a2a2a] flex items-center gap-4 px-4 hover:bg-[#333] transition-colors"
+            className="w-full h-16 rounded-full bg-[#2a2a2a] flex items-center gap-4 px-4 hover:bg-[#333] transition-all duration-300 hover:scale-105 active:scale-95"
           >
-            <div className="w-10 h-10 rounded-full bg-[#4caf50] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-full bg-[#4caf50] flex items-center justify-center shrink-0 shadow-lg shadow-green-500/30">
               <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
               </svg>
@@ -376,9 +386,9 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
 
           <button
             onClick={() => { stopAlarmRef.current?.(); setDetectionState('TRIGGERED'); startLocationUpdates(); triggerWhatsApp(profile, 'accident', aiMessage ?? undefined); setTimeout(() => triggerCall(profile), 1500); }}
-            className="w-full h-16 rounded-full bg-[#2a2a2a] flex items-center gap-4 px-4 hover:bg-[#333] transition-colors"
+            className="w-full h-16 rounded-full bg-[#2a2a2a] flex items-center gap-4 px-4 hover:bg-[#333] transition-all duration-300 hover:scale-105 active:scale-95"
           >
-            <div className="w-10 h-10 rounded-full bg-[#e05c4b] flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-full bg-[#e05c4b] flex items-center justify-center shrink-0 shadow-lg shadow-red-500/30">
               <Phone className="w-5 h-5 text-white" />
             </div>
             <span className="text-white text-lg font-normal">Call emergency &amp; notify contacts</span>
@@ -391,62 +401,63 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
   // ── PHASE 3: SOS Triggered + location updates ──
   if (detectionState === 'TRIGGERED') {
     return (
-      <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-8 text-white">
+      <div className="fixed inset-0 z-50 bg-black flex flex-col items-center justify-center p-8 text-white animate-in fade-in duration-500">
         <div className="w-full max-w-sm space-y-6 text-center">
-          <div className="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center mx-auto shadow-2xl shadow-red-600/50">
-            <Phone className="h-10 w-10 text-white" />
+          <div className="w-20 h-20 rounded-full bg-red-600 flex items-center justify-center mx-auto shadow-2xl shadow-red-600/50 animate-in zoom-in duration-500 relative">
+            <Phone className="h-10 w-10 text-white relative z-10 animate-pulse" />
+            <div className="absolute inset-0 bg-red-600 rounded-full blur-xl animate-pulse" />
           </div>
-          <div className="space-y-1">
+          <div className="space-y-1 animate-in slide-in-from-bottom duration-500 delay-100">
             <h1 className="text-3xl font-black">Emergency SOS Sent</h1>
             {contact && <p className="text-zinc-400 text-sm">Notified <span className="text-white font-semibold">{contact.name}</span> · {contact.phone}</p>}
             <div className="text-xs space-y-1 pt-1">
-              <p className="text-green-400">✓ SMS sent to emergency contact</p>
-              <p className="text-green-400">✓ WhatsApp sent to SOS contact</p>
-              <p className="text-green-400">✓ Hospital QR shared</p>
-              <p className="text-green-400">✓ Calling 108 ambulance</p>
+              <p className="text-green-400 animate-in fade-in duration-300 delay-200">✓ SMS sent to emergency contact</p>
+              <p className="text-green-400 animate-in fade-in duration-300 delay-300">✓ WhatsApp sent to SOS contact</p>
+              <p className="text-green-400 animate-in fade-in duration-300 delay-[400ms]">✓ Hospital QR shared</p>
+              <p className="text-green-400 animate-in fade-in duration-300 delay-500">✓ Calling 108 ambulance</p>
             </div>
             {locationUpdates && (
-              <p className="text-xs text-green-400 flex items-center justify-center gap-1 pt-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
+              <p className="text-xs text-green-400 flex items-center justify-center gap-1 pt-1 animate-in fade-in duration-300 delay-[600ms]">
+                <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse inline-block shadow-lg shadow-green-400/50" />
                 Sending location updates every 45s
               </p>
             )}
           </div>
 
           {aiMessage && (
-            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl text-left max-h-40 overflow-y-auto">
+            <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl text-left max-h-40 overflow-y-auto animate-in slide-in-from-bottom duration-500 delay-300">
               <p className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold mb-2">Message:</p>
               <p className="text-xs text-zinc-300 whitespace-pre-wrap leading-relaxed">{aiMessage}</p>
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-3">
-            <Button size="lg" className="h-14 rounded-2xl bg-green-600 hover:bg-green-700 font-bold gap-2"
+          <div className="grid grid-cols-2 gap-3 animate-in slide-in-from-bottom duration-500 delay-[400ms]">
+            <Button size="lg" className="h-14 rounded-2xl bg-green-600 hover:bg-green-700 font-bold gap-2 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-green-600/30"
               onClick={() => triggerWhatsApp(profile, sosType, aiMessage ?? undefined)}>
               <MessageCircle className="h-5 w-5" /> Resend WA
             </Button>
-            <Button size="lg" className="h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 font-bold gap-2"
+            <Button size="lg" className="h-14 rounded-2xl bg-blue-600 hover:bg-blue-700 font-bold gap-2 transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-blue-600/30"
               onClick={() => triggerCall(profile)}>
               <Phone className="h-5 w-5" /> Call Again
             </Button>
           </div>
 
-          <div className="grid grid-cols-3 gap-2">
-            <a href="tel:108" className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-red-600/20 border border-red-500/30">
+          <div className="grid grid-cols-3 gap-2 animate-in slide-in-from-bottom duration-500 delay-500">
+            <a href="tel:108" className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-red-600/20 border border-red-500/30 transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-red-600/30">
               <span className="text-lg font-black text-red-400">108</span>
               <span className="text-[9px] text-red-400/70 uppercase">Ambulance</span>
             </a>
-            <a href="tel:100" className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-blue-600/20 border border-blue-500/30">
+            <a href="tel:100" className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-blue-600/20 border border-blue-500/30 transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-blue-600/30">
               <span className="text-lg font-black text-blue-400">100</span>
               <span className="text-[9px] text-blue-400/70 uppercase">Police</span>
             </a>
-            <a href="tel:112" className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-orange-600/20 border border-orange-500/30">
+            <a href="tel:112" className="flex flex-col items-center gap-1 p-3 rounded-2xl bg-orange-600/20 border border-orange-500/30 transition-all duration-300 hover:scale-105 active:scale-95 hover:bg-orange-600/30">
               <span className="text-lg font-black text-orange-400">112</span>
               <span className="text-[9px] text-orange-400/70 uppercase">Emergency</span>
             </a>
           </div>
 
-          <Button variant="outline" className="w-full h-12 rounded-2xl border-zinc-700 text-zinc-300 hover:bg-zinc-900"
+          <Button variant="outline" className="w-full h-12 rounded-2xl border-zinc-700 text-zinc-300 hover:bg-zinc-900 transition-all duration-300 hover:scale-105 active:scale-95 animate-in fade-in duration-500 delay-[600ms]"
             onClick={() => { stopLocationUpdates(); setDetectionState('IDLE'); setAiMessage(null); }}>
             I am Safe — Dismiss
           </Button>
@@ -457,11 +468,11 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
 
   // ── IDLE: main card ──
   return (
-    <Card className="border-border/40 bg-card/30 backdrop-blur-md">
+    <Card className="border-border/40 bg-card/30 backdrop-blur-md transition-all duration-500 hover:shadow-lg hover:shadow-primary/5 animate-in fade-in slide-in-from-bottom duration-500">
       <CardContent className="p-6 space-y-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className={`p-2 rounded-xl ${isMonitoring ? 'bg-primary/20 text-primary' : 'bg-muted text-muted-foreground'}`}>
+            <div className={`p-2 rounded-xl transition-all duration-500 ${isMonitoring ? 'bg-primary/20 text-primary shadow-lg shadow-primary/30 scale-110' : 'bg-muted text-muted-foreground'}`}>
               <ShieldCheck className="h-6 w-6" />
             </div>
             <div>
@@ -470,41 +481,41 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {isMonitoring && <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse inline-block" />}
-            <span className={`text-[10px] font-bold uppercase tracking-widest ${isMonitoring ? 'text-green-500' : 'text-muted-foreground'}`}>
+            {isMonitoring && <span className="h-2 w-2 rounded-full bg-green-500 animate-pulse inline-block shadow-lg shadow-green-500/50" />}
+            <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors duration-300 ${isMonitoring ? 'text-green-500' : 'text-muted-foreground'}`}>
               {isMonitoring ? 'Active' : 'Off'}
             </span>
           </div>
         </div>
 
-        {permissionError && <p className="text-xs text-destructive bg-destructive/10 p-3 rounded-xl">{permissionError}</p>}
+        {permissionError && <p className="text-xs text-destructive bg-destructive/10 p-3 rounded-xl animate-in fade-in slide-in-from-top duration-300">{permissionError}</p>}
 
         {isMonitoring && (
           <>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-background/40 rounded-2xl p-3 border border-border/10">
+            <div className="grid grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom duration-500">
+              <div className="bg-background/40 rounded-2xl p-3 border border-border/10 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-primary/10">
                 <div className="flex items-center gap-2 mb-1">
                   <Wind className="h-3.5 w-3.5 text-primary" />
                   <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Linear G</span>
                 </div>
                 <p className="text-2xl font-black text-primary tabular-nums">{currentSensors.linear.toFixed(2)}</p>
                 <div className="w-full bg-muted h-1 mt-2 rounded-full overflow-hidden">
-                  <div className="bg-primary h-full transition-all duration-300" style={{ width: `${Math.min(currentSensors.linear * 15, 100)}%` }} />
+                  <div className="bg-primary h-full transition-all duration-500 ease-out" style={{ width: `${Math.min(currentSensors.linear * 15, 100)}%` }} />
                 </div>
               </div>
-              <div className="bg-background/40 rounded-2xl p-3 border border-border/10">
+              <div className="bg-background/40 rounded-2xl p-3 border border-border/10 transition-all duration-300 hover:scale-105 hover:shadow-lg hover:shadow-accent/10">
                 <div className="flex items-center gap-2 mb-1">
                   <RotateCcw className="h-3.5 w-3.5 text-accent" />
                   <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Gyro °/s</span>
                 </div>
                 <p className="text-2xl font-black text-accent tabular-nums">{currentSensors.gyro.toFixed(0)}</p>
                 <div className="w-full bg-muted h-1 mt-2 rounded-full overflow-hidden">
-                  <div className="bg-accent h-full transition-all duration-300" style={{ width: `${Math.min(currentSensors.gyro / 4, 100)}%` }} />
+                  <div className="bg-accent h-full transition-all duration-500 ease-out" style={{ width: `${Math.min(currentSensors.gyro / 4, 100)}%` }} />
                 </div>
               </div>
             </div>
             {sensorData.length > 0 && (
-              <div className="h-24 w-full">
+              <div className="h-24 w-full animate-in fade-in duration-500 delay-200">
                 <ResponsiveContainer width="100%" height="100%">
                   <ComposedChart data={sensorData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
@@ -520,15 +531,15 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
 
         <div className="grid grid-cols-2 gap-3">
           {!isMonitoring ? (
-            <Button className="col-span-2 h-14 rounded-2xl font-bold gap-2 text-base shadow-lg shadow-primary/20" onClick={startMonitoring}>
+            <Button className="col-span-2 h-14 rounded-2xl font-bold gap-2 text-base shadow-lg shadow-primary/20 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-primary/30 active:scale-95" onClick={startMonitoring}>
               <Play className="h-4 w-4 fill-white" /> Start Detection
             </Button>
           ) : (
             <>
-              <Button variant="outline" className="h-12 rounded-xl gap-2 text-sm border-destructive/30 text-destructive hover:bg-destructive/10" onClick={stopMonitoring}>
+              <Button variant="outline" className="h-12 rounded-xl gap-2 text-sm border-destructive/30 text-destructive hover:bg-destructive/10 transition-all duration-300 hover:scale-105 active:scale-95" onClick={stopMonitoring}>
                 <Square className="h-3.5 w-3.5 fill-destructive" /> Stop
               </Button>
-              <Button variant="destructive" className="h-12 rounded-xl gap-2 text-sm font-bold shadow-lg shadow-destructive/20" onClick={triggerPanic}>
+              <Button variant="destructive" className="h-12 rounded-xl gap-2 text-sm font-bold shadow-lg shadow-destructive/20 transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-destructive/30 active:scale-95" onClick={triggerPanic}>
                 <Zap className="h-3.5 w-3.5 fill-white" /> Panic SOS
               </Button>
             </>
@@ -536,7 +547,7 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
         </div>
 
         {lastPrediction && (
-          <div className="bg-background/40 border border-border/10 p-3 rounded-2xl flex items-center gap-3">
+          <div className="bg-background/40 border border-border/10 p-3 rounded-2xl flex items-center gap-3 animate-in fade-in slide-in-from-bottom duration-500">
             <CheckCircle2 className="h-4 w-4 text-muted-foreground shrink-0" />
             <p className="text-xs font-semibold">{lastPrediction.type}</p>
           </div>

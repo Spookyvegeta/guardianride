@@ -1,7 +1,53 @@
 import { WorkerProfile } from './types';
 
+// Cache for real-time location
+let cachedLocation: string | null = null;
+let locationWatchId: number | null = null;
+
+// Start watching location in real-time
+export function startLocationTracking() {
+  if (typeof window === 'undefined' || !navigator.geolocation) return;
+  
+  // Get initial location immediately
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      cachedLocation = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+    },
+    () => {},
+    { timeout: 5000, enableHighAccuracy: true }
+  );
+
+  // Watch for location updates
+  if (locationWatchId === null) {
+    locationWatchId = navigator.geolocation.watchPosition(
+      (pos) => {
+        cachedLocation = `https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`;
+      },
+      () => {},
+      { enableHighAccuracy: true }
+    );
+  }
+}
+
+// Stop watching location
+export function stopLocationTracking() {
+  if (locationWatchId !== null) {
+    navigator.geolocation.clearWatch(locationWatchId);
+    locationWatchId = null;
+  }
+  cachedLocation = null;
+}
+
+// Get cached location or fetch new one
 export function getLocationLink(): Promise<string> {
   return new Promise((resolve) => {
+    // Use cached location if available
+    if (cachedLocation) {
+      resolve(cachedLocation);
+      return;
+    }
+
+    // Otherwise fetch fresh location
     if (typeof window === 'undefined' || !navigator.geolocation) {
       resolve('https://maps.google.com');
       return;

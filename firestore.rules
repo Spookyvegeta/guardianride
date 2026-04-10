@@ -30,22 +30,19 @@ service cloud.firestore {
         allow update: if isExistingOwner(userId);
         allow delete: if isExistingOwner(userId);
       }
-      match /incidents/{incidentId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId);
-        allow update: if isExistingOwner(userId);
-        allow delete: if isExistingOwner(userId);
-        match /emergencyActions/{actionId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId);
-          allow update: if isExistingOwner(userId);
-          allow delete: if isExistingOwner(userId);
-        }
-      }
     }
+
+    // Global incidents collection — writable by any signed-in user, readable by all signed-in
+    match /incidents/{incidentId} {
+      allow create: if isSignedIn();
+      allow read: if isSignedIn();
+      allow update: if isSignedIn(); // responders can update status
+      allow delete: if false;
+    }
+
     match /platforms/{platformId} {
       allow get, list: if true;
-      allow write: if false; 
+      allow write: if false;
     }
     match /accidentHeatmapData/{heatmapId} {
       allow get, list: if true;
