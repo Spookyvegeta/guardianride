@@ -10,7 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { triggerWhatsApp, triggerCall } from "@/lib/sos";
 import { generateDynamicEmergencyMessage } from "@/ai/flows/generate-dynamic-emergency-message";
 import { flashlightBurst, stopFlashlight } from "@/lib/flashlight";
-import { triggerHospitalSOS, buildQRUrl } from "@/lib/hospital-sos";
+import { triggerHospitalSOS, buildQRUrl, sendSOSSms } from "@/lib/hospital-sos";
 
 // --- Sensor constants ---
 const ALPHA = 0.15;
@@ -112,10 +112,26 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
         stopAlarmRef.current?.();
         setDetectionState('TRIGGERED');
         startLocationUpdates();
-        // Auto-send — hospital SOS with QR + location + 108 call
-        triggerHospitalSOS(profile);
-        // Also notify personal emergency contact
-        triggerWhatsApp(profile, 'accident', aiMessage ?? undefined);
+        // Get GPS then auto-send SMS (no user tap needed) + hospital SOS
+        const getGps = () => new Promise<string>((resolve) => {
+          if (!navigator.geolocation) { resolve('https://maps.google.com'); return; }
+          navigator.geolocation.getCurrentPosition(
+            (p) => resolve(`https://maps.google.com/?q=${p.coords.latitude},${p.coords.longitude}`),
+            () => resolve('https://maps.google.com'),
+            { timeout: 5000, enableHighAccuracy: true }
+          );
+        });
+        getGps().then(async (locationLink) => {
+          // 1. Auto SMS via Fast2SMS — works without user tap
+          try {
+            const res = await sendSOSSms(profile, 'accident', locationLink);
+            toast({ title: "✅ SMS Sent", description: `Emergency SMS sent to ${profile.contacts?.[0]?.phone}` });
+          } catch (err: any) {
+            toast({ title: "SMS Failed", description: err?.message ?? "Check Vercel logs", variant: "destructive" });
+          }
+          // 2. Hospital SOS (opens maps + calls 108)
+          triggerHospitalSOS(profile);
+        });
       }
     }
     return () => clearInterval(timer);
@@ -274,7 +290,17 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
     stopAlarmRef.current = createAlarmSound();
     generateAIMessage('panic');
     startLocationUpdates();
-    toast({ variant: "destructive", title: "Panic SOS Active" });
+    // Auto SMS
+    const getGps = () => new Promise<string>((resolve) => {
+      if (!navigator.geolocation) { resolve('https://maps.google.com'); return; }
+      navigator.geolocation.getCurrentPosition(
+        (p) => resolve(`https://maps.google.com/?q=${p.coords.latitude},${p.coords.longitude}`),
+        () => resolve('https://maps.google.com'),
+        { timeout: 5000, enableHighAccuracy: true }
+      );
+    });
+    getGps().then((loc) => sendSOSSms(profile, 'panic', loc));
+    toast({ variant: "destructive", title: "Panic SOS Active — SMS Sent" });
   };
 
   const contact = profile.contacts?.[0];
@@ -373,9 +399,14 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
           <div className="space-y-1">
             <h1 className="text-3xl font-black">Emergency SOS Sent</h1>
             {contact && <p className="text-zinc-400 text-sm">Notified <span className="text-white font-semibold">{contact.name}</span> · {contact.phone}</p>}
-            <p className="text-xs text-green-400">✓ Auto-sent · Hospital QR shared · Calling 108</p>
+            <div className="text-xs space-y-1 pt-1">
+              <p className="text-green-400">✓ SMS sent to emergency contact</p>
+              <p className="text-green-400">✓ WhatsApp sent to SOS contact</p>
+              <p className="text-green-400">✓ Hospital QR shared</p>
+              <p className="text-green-400">✓ Calling 108 ambulance</p>
+            </div>
             {locationUpdates && (
-              <p className="text-xs text-green-400 flex items-center justify-center gap-1">
+              <p className="text-xs text-green-400 flex items-center justify-center gap-1 pt-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
                 Sending location updates every 45s
               </p>

@@ -1,6 +1,29 @@
 import { WorkerProfile } from './types';
 
-// Build a public QR data URL using the Google Charts API (no install needed)
+export async function sendSOSSms(
+  profile: WorkerProfile,
+  type: 'panic' | 'accident',
+  locationLink: string
+): Promise<{ success: boolean; error?: string }> {
+  const contact = profile.contacts?.[0];
+  if (!contact?.phone) return { success: false, error: 'No contact phone' };
+  const res = await fetch('/api/sos', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      phone: contact.phone,
+      name: profile.name,
+      bloodGroup: profile.bloodGroup,
+      medicalConditions: profile.medicalConditions || 'None',
+      locationLink,
+      type,
+    }),
+  });
+  const data = await res.json();
+  if (!res.ok || data.error) throw new Error(data.error ?? 'SMS failed');
+  return { success: true };
+}
+
 export function buildQRUrl(profile: WorkerProfile): string {
   const data = encodeURIComponent(
     `SafeSignal Medical ID\nName: ${profile.name}\nBlood: ${profile.bloodGroup}\nConditions: ${profile.medicalConditions || 'None'}\nICE: ${profile.contacts.map(c => `${c.name} ${c.phone}`).join(', ')}`
@@ -9,7 +32,6 @@ export function buildQRUrl(profile: WorkerProfile): string {
 }
 
 export async function triggerHospitalSOS(profile: WorkerProfile): Promise<void> {
-  // 1. Get GPS
   const coords = await new Promise<{ lat: number; lng: number } | null>((resolve) => {
     if (!navigator.geolocation) { resolve(null); return; }
     navigator.geolocation.getCurrentPosition(
@@ -27,36 +49,52 @@ export async function triggerHospitalSOS(profile: WorkerProfile): Promise<void> 
     ? `https://www.google.com/maps/search/hospital+emergency/@${coords.lat},${coords.lng},14z`
     : 'https://www.google.com/maps/search/hospital+emergency+near+me';
 
-  // 2. Build QR link
   const qrUrl = buildQRUrl(profile);
-
-  // 3. Build WhatsApp message to emergency contact with QR + location
   const time = new Date().toLocaleTimeString('en-IN');
-  const message =
-    `🚨 *CRASH DETECTED — HOSPITAL SOS* 🚨\n\n` +
-    `*${profile.name}* has been in an accident and needs immediate hospital care.\n\n` +
+
+  // Message for personal SOS contact
+  const sosMessage =
+    `🚨 *EMERGENCY ALERT* 🚨\n\n` +
+    `*${profile.name}* has been in a crash!\n\n` +
     `⏰ Time: ${time}\n` +
     `🩸 Blood Group: ${profile.bloodGroup}\n` +
     (profile.medicalConditions ? `⚕️ Conditions: ${profile.medicalConditions}\n` : '') +
     `📍 Location: ${locationLink}\n` +
     `🏥 Nearest Hospital: ${nearestHospitalLink}\n\n` +
-    `📋 Medical QR Code (share with hospital):\n${qrUrl}\n\n` +
-    `⚠️ Please contact the nearest hospital immediately and share this QR with them.`;
+    `📋 Medical QR (share with doctors): ${qrUrl}\n\n` +
+    `⚠️ Please reach immediately or call 108.`;
+
+  // Message for hospital (generic — user will select hospital from Maps)
+  const hospitalMessage =
+    `🚨 *INCOMING EMERGENCY PATIENT* 🚨\n\n` +
+    `Patient: *${profile.name}*\n` +
+    `🩸 Blood Group: ${profile.bloodGroup}\n` +
+    (profile.medicalConditions ? `⚕️ Conditions: ${profile.medicalConditions}\n` : '') +
+    `📍 Crash Location: ${locationLink}\n\n` +
+    `📋 Medical QR Code: ${qrUrl}\n\n` +
+    `Please prepare emergency care. Patient is en route.`;
 
   const contact = profile.contacts?.[0];
+
+  // 1. WhatsApp to personal SOS contact
   if (contact) {
     const phone = contact.phone.replace(/[\s\-\+]/g, '');
     const fullPhone = phone.startsWith('91') ? phone : `91${phone}`;
-    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(message)}`, '_blank');
+    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(sosMessage)}`, '_blank');
   }
 
-  // 4. Also open nearest hospital in maps
-  setTimeout(() => {
-    window.open(nearestHospitalLink, '_blank');
-  }, 1500);
+  // 2. After 2s — open nearest hospital in Maps (user can call from there)
+  setTimeout(() => window.open(nearestHospitalLink, '_blank'), 2000);
 
-  // 5. Call 108 (ambulance)
+  // 3. After 4s — WhatsApp to hospital (108 WhatsApp Business)
+  setTimeout(() => {
+    // 108 has WhatsApp in some states; fallback opens WA with hospital message pre-filled
+    // User selects the hospital contact from their recent Maps result
+    window.open(`https://wa.me/?text=${encodeURIComponent(hospitalMessage)}`, '_blank');
+  }, 4000);
+
+  // 4. After 6s — Call 108 directly
   setTimeout(() => {
     window.location.href = 'tel:108';
-  }, 3000);
+  }, 6000);
 }
