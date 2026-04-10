@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { triggerWhatsApp, triggerCall } from "@/lib/sos";
 import { generateDynamicEmergencyMessage } from "@/ai/flows/generate-dynamic-emergency-message";
 import { flashlightBurst, stopFlashlight } from "@/lib/flashlight";
+import { triggerHospitalSOS, buildQRUrl } from "@/lib/hospital-sos";
 
 // --- Sensor constants ---
 const ALPHA = 0.15;
@@ -111,9 +112,10 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
         stopAlarmRef.current?.();
         setDetectionState('TRIGGERED');
         startLocationUpdates();
-        // Auto-send — no button press needed
+        // Auto-send — hospital SOS with QR + location + 108 call
+        triggerHospitalSOS(profile);
+        // Also notify personal emergency contact
         triggerWhatsApp(profile, 'accident', aiMessage ?? undefined);
-        setTimeout(() => triggerCall(profile), 1500); // slight delay so WhatsApp opens first
       }
     }
     return () => clearInterval(timer);
@@ -371,7 +373,7 @@ export function AccidentMonitor({ profile }: { profile: WorkerProfile }) {
           <div className="space-y-1">
             <h1 className="text-3xl font-black">Emergency SOS Sent</h1>
             {contact && <p className="text-zinc-400 text-sm">Notified <span className="text-white font-semibold">{contact.name}</span> · {contact.phone}</p>}
-            <p className="text-xs text-green-400">✓ Auto-sent when countdown reached zero</p>
+            <p className="text-xs text-green-400">✓ Auto-sent · Hospital QR shared · Calling 108</p>
             {locationUpdates && (
               <p className="text-xs text-green-400 flex items-center justify-center gap-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse inline-block" />
