@@ -1,0 +1,63 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 280 18% 15%;
+    --foreground: 0 0% 98%;
+    --card: 280 18% 18%;
+    --card-foreground: 0 0% 98%;
+    --popover: 280 18% 15%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 321 96% 63%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 276 86% 25%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 280 18% 22%;
+    --muted-foreground: 280 10% 70%;
+    --accent: 276 86% 76%;
+    --accent-foreground: 280 18% 15%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 280 18% 25%;
+    --input: 280 18% 25%;
+    --ring: 321 96% 63%;
+    --radius: 1rem;
+    --chart-1: 321 96% 63%;
+    --chart-2: 276 86% 76%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .7;
+  }
+}
+
+.bg-mesh {
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(321, 96%, 63%, 0.15) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(276, 86%, 76%, 0.1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, hsla(321, 96%, 63%, 0.05) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(276, 86%, 76%, 0.1) 0px, transparent 50%);
+}

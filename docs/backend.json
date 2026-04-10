@@ -1,0 +1,501 @@
+{
+  "entities": {
+    "WorkerProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkerProfile",
+      "type": "object",
+      "description": "Represents the profile and personal information of a gig worker, including medical details and registered platforms for the GuardianRide app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkerProfile entity."
+        },
+        "phoneNumberHash": {
+          "type": "string",
+          "description": "Hashed phone number of the worker for identification while maintaining privacy. (Note: Original phone number is not stored directly for security)."
+        },
+        "name": {
+          "type": "string",
+          "description": "Full name of the gig worker."
+        },
+        "bloodGroup": {
+          "type": "string",
+          "description": "The worker's blood group (e.g., 'A+', 'O-')."
+        },
+        "medicalConditions": {
+          "type": "string",
+          "description": "Known medical conditions of the worker. This field is sensitive and should be encrypted at rest."
+        },
+        "allergies": {
+          "type": "string",
+          "description": "Known allergies of the worker. This field is sensitive and should be encrypted at rest."
+        },
+        "currentMedications": {
+          "type": "string",
+          "description": "Medications currently being taken by the worker. This field is sensitive and should be encrypted at rest."
+        },
+        "platformIds": {
+          "type": "array",
+          "description": "References to Platform entities the worker is registered with. (Relationship: WorkerProfile N:N Platform)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "homeLatitude": {
+          "type": "number",
+          "description": "The latitude coordinate of the worker's home or base location."
+        },
+        "homeLongitude": {
+          "type": "number",
+          "description": "The longitude coordinate of the worker's home or base location."
+        },
+        "registeredAt": {
+          "type": "string",
+          "description": "Timestamp when the worker registered their profile.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "phoneNumberHash",
+        "name",
+        "bloodGroup",
+        "platformIds",
+        "homeLatitude",
+        "homeLongitude",
+        "registeredAt"
+      ]
+    },
+    "EmergencyContact": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EmergencyContact",
+      "type": "object",
+      "description": "Details of an emergency contact for a gig worker, notified by GuardianRide in case of an incident.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the EmergencyContact entity."
+        },
+        "workerId": {
+          "type": "string",
+          "description": "Reference to the WorkerProfile this contact belongs to. (Relationship: WorkerProfile 1:N EmergencyContact)"
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the emergency contact."
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "Phone number of the emergency contact."
+        },
+        "relationship": {
+          "type": "string",
+          "description": "Relationship of the contact to the worker (e.g., 'Spouse', 'Parent', 'Friend')."
+        },
+        "languagePreference": {
+          "type": "string",
+          "description": "Preferred language for communication with this emergency contact (e.g., 'Hindi', 'English')."
+        },
+        "priorityOrder": {
+          "type": "number",
+          "description": "Priority order for contacting this person during an emergency (e.g., 1 for first contact, 2 for second)."
+        }
+      },
+      "required": [
+        "id",
+        "workerId",
+        "name",
+        "phoneNumber",
+        "relationship",
+        "languagePreference",
+        "priorityOrder"
+      ]
+    },
+    "Platform": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Platform",
+      "type": "object",
+      "description": "Represents a gig-work platform (e.g., Swiggy, Zomato) that workers are associated with and which can receive incident notifications from GuardianRide.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Platform entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the gig-work platform (e.g., 'Swiggy', 'Zomato')."
+        },
+        "webhookUrl": {
+          "type": "string",
+          "description": "The URL endpoint for sending automated incident notifications to this platform.",
+          "format": "uri"
+        },
+        "contactEmail": {
+          "type": "string",
+          "description": "Primary contact email for the platform's safety team.",
+          "format": "email"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "webhookUrl"
+      ]
+    },
+    "WorkSession": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "WorkSession",
+      "type": "object",
+      "description": "Records a specific period when a gig worker is actively working and being monitored by the GuardianRide app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the WorkSession entity."
+        },
+        "workerId": {
+          "type": "string",
+          "description": "Reference to the WorkerProfile who initiated this work session. (Relationship: WorkerProfile 1:N WorkSession)"
+        },
+        "platformId": {
+          "type": "string",
+          "description": "Reference to the Platform entity the worker was actively working for during this session. (Relationship: Platform 1:N WorkSession)"
+        },
+        "startedAt": {
+          "type": "string",
+          "description": "Timestamp when the work session began.",
+          "format": "date-time"
+        },
+        "endedAt": {
+          "type": "string",
+          "description": "Timestamp when the work session ended.",
+          "format": "date-time"
+        },
+        "totalDistanceKm": {
+          "type": "number",
+          "description": "Total distance covered by the worker during this session, in kilometers."
+        },
+        "incidentOccurred": {
+          "type": "boolean",
+          "description": "Indicates if an incident was detected during this work session."
+        }
+      },
+      "required": [
+        "id",
+        "workerId",
+        "platformId",
+        "startedAt",
+        "totalDistanceKm",
+        "incidentOccurred"
+      ]
+    },
+    "Incident": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Incident",
+      "type": "object",
+      "description": "Details about a detected accident or potential emergency event involving a gig worker, managed by GuardianRide.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Incident entity."
+        },
+        "workerId": {
+          "type": "string",
+          "description": "Reference to the WorkerProfile involved in the incident. (Relationship: WorkerProfile 1:N Incident)"
+        },
+        "sessionId": {
+          "type": "string",
+          "description": "Reference to the WorkSession during which the incident occurred. (Relationship: WorkSession 1:N Incident)"
+        },
+        "detectedAt": {
+          "type": "string",
+          "description": "Timestamp when the system detected the potential incident.",
+          "format": "date-time"
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Latitude coordinate of the incident location."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Longitude coordinate of the incident location."
+        },
+        "speedAtImpactKmph": {
+          "type": "number",
+          "description": "Estimated speed of the worker at the moment of impact, in kilometers per hour."
+        },
+        "confidenceScore": {
+          "type": "number",
+          "description": "Confidence score (0-1) from the AI model indicating the likelihood of an actual accident."
+        },
+        "confirmedAccident": {
+          "type": "boolean",
+          "description": "True if the incident was confirmed as an actual accident (either by worker non-response or manual confirmation)."
+        },
+        "falseAlarm": {
+          "type": "boolean",
+          "description": "True if the worker manually cancelled the emergency protocol, indicating a false alarm."
+        },
+        "emergencyTriggered": {
+          "type": "boolean",
+          "description": "True if the full emergency protocol (calls, messages) was triggered."
+        },
+        "resolvedAt": {
+          "type": "string",
+          "description": "Timestamp when the incident was marked as resolved.",
+          "format": "date-time"
+        },
+        "outcome": {
+          "type": "string",
+          "description": "The reported outcome of the incident (e.g., 'fine', 'hospitalised', 'deceased', 'unknown')."
+        }
+      },
+      "required": [
+        "id",
+        "workerId",
+        "sessionId",
+        "detectedAt",
+        "latitude",
+        "longitude",
+        "speedAtImpactKmph",
+        "confidenceScore",
+        "confirmedAccident",
+        "falseAlarm",
+        "emergencyTriggered"
+      ]
+    },
+    "EmergencyAction": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EmergencyAction",
+      "type": "object",
+      "description": "Records a specific action taken as part of the emergency protocol for an incident by GuardianRide.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the EmergencyAction entity."
+        },
+        "incidentId": {
+          "type": "string",
+          "description": "Reference to the Incident this action belongs to. (Relationship: Incident 1:N EmergencyAction)"
+        },
+        "actionType": {
+          "type": "string",
+          "description": "The type of emergency action performed (e.g., 'CALL_WORKER', 'CALL_CONTACT1', 'CALL_CONTACT2', 'CALL_108', 'NOTIFY_PLATFORM')."
+        },
+        "triggeredAt": {
+          "type": "string",
+          "description": "Timestamp when this emergency action was triggered.",
+          "format": "date-time"
+        },
+        "responseReceived": {
+          "type": "boolean",
+          "description": "Indicates if a response was received for this action (e.g., call answered, webhook acknowledged)."
+        },
+        "responseTimeSeconds": {
+          "type": "number",
+          "description": "Time taken to receive a response for the action, in seconds."
+        }
+      },
+      "required": [
+        "id",
+        "incidentId",
+        "actionType",
+        "triggeredAt"
+      ]
+    },
+    "AccidentHeatmapData": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AccidentHeatmapData",
+      "type": "object",
+      "description": "Aggregated and anonymized data representing accident hotspots, used for public safety reports and traffic analysis.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for this aggregated heatmap data point/cell."
+        },
+        "gridCellId": {
+          "type": "string",
+          "description": "A unique identifier for the geospatial grid cell this data represents."
+        },
+        "latitude": {
+          "type": "number",
+          "description": "Representative latitude of the aggregated grid cell."
+        },
+        "longitude": {
+          "type": "number",
+          "description": "Representative longitude of the aggregated grid cell."
+        },
+        "incidentCount": {
+          "type": "number",
+          "description": "The total number of incidents recorded in this grid cell during the specified period."
+        },
+        "timeSlot": {
+          "type": "string",
+          "description": "The time slot during which incidents are aggregated (e.g., 'morning', 'afternoon', 'night')."
+        },
+        "weatherCondition": {
+          "type": "string",
+          "description": "The predominant weather condition during the incidents in this aggregation (e.g., 'clear', 'rainy', 'foggy')."
+        },
+        "platformName": {
+          "type": "string",
+          "description": "The name of the platform associated with these aggregated incidents, or 'all' if aggregated across platforms."
+        },
+        "roadType": {
+          "type": "string",
+          "description": "The type of road where incidents occurred (e.g., 'highway', 'urban_street', 'residential')."
+        }
+      },
+      "required": [
+        "id",
+        "gridCellId",
+        "latitude",
+        "longitude",
+        "incidentCount",
+        "timeSlot"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}/profile/main",
+        "definition": {
+          "entityName": "WorkerProfile",
+          "schema": {
+            "$ref": "#/backend/entities/WorkerProfile"
+          },
+          "description": "A worker's personal and medical profile. Accessible only by the authenticated worker matching `userId`. The `userId` is denormalized into the path, ensuring authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the authenticated user (worker) to whom this profile belongs."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/emergencyContacts/{contactId}",
+        "definition": {
+          "entityName": "EmergencyContact",
+          "schema": {
+            "$ref": "#/backend/entities/EmergencyContact"
+          },
+          "description": "Emergency contacts for a specific worker. Accessible only by the authenticated worker matching `userId`. The `workerId` is denormalized into the path and also explicitly stored in the document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the authenticated user (worker) to whom these contacts belong."
+            },
+            {
+              "name": "contactId",
+              "description": "The unique identifier for an individual emergency contact."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/platforms/{platformId}",
+        "definition": {
+          "entityName": "Platform",
+          "schema": {
+            "$ref": "#/backend/entities/Platform"
+          },
+          "description": "Master list of gig-work platforms. Globally readable by all users. The `platformId` is denormalized into the path.",
+          "params": [
+            {
+              "name": "platformId",
+              "description": "The unique identifier for a gig-work platform."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/workSessions/{sessionId}",
+        "definition": {
+          "entityName": "WorkSession",
+          "schema": {
+            "$ref": "#/backend/entities/WorkSession"
+          },
+          "description": "Records work sessions for a specific worker. Accessible only by the authenticated worker matching `userId`. The `workerId` is denormalized into the path and also explicitly stored in the document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the authenticated user (worker) who initiated this session."
+            },
+            {
+              "name": "sessionId",
+              "description": "The unique identifier for an individual work session."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/incidents/{incidentId}",
+        "definition": {
+          "entityName": "Incident",
+          "schema": {
+            "$ref": "#/backend/entities/Incident"
+          },
+          "description": "Details of detected incidents for a specific worker. Accessible only by the authenticated worker matching `userId`. The `workerId` is denormalized into the path and also explicitly stored in the document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the authenticated user (worker) involved in this incident."
+            },
+            {
+              "name": "incidentId",
+              "description": "The unique identifier for an individual incident."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/incidents/{incidentId}/emergencyActions/{actionId}",
+        "definition": {
+          "entityName": "EmergencyAction",
+          "schema": {
+            "$ref": "#/backend/entities/EmergencyAction"
+          },
+          "description": "Records specific emergency actions taken for a given incident. Accessible only by the authenticated worker whose `userId` matches the path. The `incidentId` and `workerId` are denormalized into the path, and `incidentId` is also stored in the document.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the authenticated user (worker) related to this emergency action."
+            },
+            {
+              "name": "incidentId",
+              "description": "The unique identifier for the incident to which this action belongs."
+            },
+            {
+              "name": "actionId",
+              "description": "The unique identifier for an individual emergency action."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/accidentHeatmapData/{heatmapId}",
+        "definition": {
+          "entityName": "AccidentHeatmapData",
+          "schema": {
+            "$ref": "#/backend/entities/AccidentHeatmapData"
+          },
+          "description": "Aggregated and anonymized accident data for public reports and analysis. Globally readable by all users. The `heatmapId` is denormalized into the path.",
+          "params": [
+            {
+              "name": "heatmapId",
+              "description": "The unique identifier for an aggregated heatmap data point."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure prioritizes strict ownership, clear authorization boundaries, and adherence to the core design principles. All user-specific data is nested under a top-level `/users/{userId}` collection, where `{userId}` directly corresponds to `request.auth.uid`. This design inherently achieves **Authorization Independence** (Mandate A) for private data. For instance, to access a worker's profile at `/users/{userId}/profile/main`, the security rule can simply verify `request.auth.uid == userId`. No `get()` operations are needed to check parent document ownership, making rules simple, atomic, and robust.\n\n**Structural Segregation** (Mandate B) is applied by having dedicated top-level collections for global, publicly accessible data (`/platforms`, `/accidentHeatmapData`) and separate, user-owned hierarchies for private data. This ensures that documents within a given collection always share the same security posture, simplifying rule sets.\n\n**Access Modeling** (Mandate C) leverages path-based ownership extensively. For `WorkerProfile`, a dedicated subcollection `profile` containing a `main` document under the user's ID (`/users/{userId}/profile/main`) stores the primary profile. Related entities like `EmergencyContact`, `WorkSession`, and `Incident` are also structured as subcollections directly under the worker's path (e.g., `/users/{userId}/emergencyContacts/{contactId}`). Further nested data, such as `EmergencyAction`, follows this hierarchy (`/users/{userId}/incidents/{incidentId}/emergencyActions/{actionId}`). In each of these private collections, the `workerId` is implicitly denormalized into the path itself. While the `workerId` is also present within the document body for backend query efficiency, the primary authorization check will be against the path wildcard.\n\n**QAPs (Rules are not Filters)** are supported by this structure. For private data, client-side queries for `list` operations must always include the authenticated user's `uid` in the path (e.g., a query for `/users/khEKRKKCjBa6fCbEIPRrXTY1c7s2/workSessions`). This allows security rules to enforce `allow list: if request.auth.uid == userId;`, ensuring that the database only returns documents explicitly owned by the requesting user without having to filter results. For public collections like `/platforms` and `/accidentHeatmapData`, `list` operations are permitted for all users, as these collections are designed for broad visibility."
+  }
+}
