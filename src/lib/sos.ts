@@ -1,42 +1,46 @@
 import { WorkerProfile } from './types';
 
-export function getLocationLink(): string {
-  if (typeof window === 'undefined') return 'https://maps.google.com';
-  // Try to get real location, fallback to generic maps link
-  return `https://www.google.com/maps?q=My+Location`;
+export function getLocationLink(): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      resolve('https://maps.google.com');
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve(`https://maps.google.com/?q=${pos.coords.latitude},${pos.coords.longitude}`),
+      () => resolve('https://maps.google.com'),
+      { timeout: 5000, enableHighAccuracy: true }
+    );
+  });
 }
 
-export function buildWhatsAppMessage(profile: WorkerProfile, type: 'panic' | 'accident', aiMessage?: string): string {
+export async function buildWhatsAppMessage(profile: WorkerProfile, type: 'panic' | 'accident', aiMessage?: string): Promise<string> {
   const contact = profile.contacts?.[0];
   if (!contact) return '';
 
   const time = new Date().toLocaleTimeString('en-IN');
-  const locationLink = getLocationLink();
+  const locationLink = await getLocationLink();
 
-  const base = aiMessage ||
+  return aiMessage ||
     `🚨 *EMERGENCY ALERT* 🚨\n\n` +
     `*${profile.name}* needs immediate help!\n\n` +
     `⏰ Time: ${time}\n` +
     `🩸 Blood Group: ${profile.bloodGroup}\n` +
     (profile.medicalConditions ? `⚕️ Conditions: ${profile.medicalConditions}\n` : '') +
-    `📍 Location: ${locationLink}\n\n` +
+    `📍 My Location: ${locationLink}\n\n` +
     (type === 'panic'
       ? `⚠️ Panic button was manually triggered. Please call immediately.`
       : `⚠️ A potential accident/fall was detected. Please check on them immediately.`);
-
-  return base;
 }
 
-export function triggerWhatsApp(profile: WorkerProfile, type: 'panic' | 'accident', aiMessage?: string) {
+export async function triggerWhatsApp(profile: WorkerProfile, type: 'panic' | 'accident', aiMessage?: string) {
   const contact = profile.contacts?.[0];
   if (!contact) return;
 
-  // Clean phone number - remove spaces, dashes, +
   const phone = contact.phone.replace(/[\s\-\+]/g, '');
-  // Add country code if not present (assume India +91)
   const fullPhone = phone.startsWith('91') ? phone : `91${phone}`;
 
-  const message = buildWhatsAppMessage(profile, type, aiMessage);
+  const message = await buildWhatsAppMessage(profile, type, aiMessage);
   const encoded = encodeURIComponent(message);
   window.open(`https://wa.me/${fullPhone}?text=${encoded}`, '_blank');
 }

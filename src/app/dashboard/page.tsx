@@ -3,15 +3,16 @@
 
 import { useWorkerProfile } from '@/lib/store';
 import { AccidentMonitor } from '@/components/AccidentMonitor';
-import { DrowsinessMonitor } from '@/components/DrowsinessMonitor';
 import { QRCard } from '@/components/QRCard';
 import { HazardReporter } from '@/components/HazardReporter';
 import { ProfileView } from '@/components/ProfileView';
+import { AmbulanceFinder } from '@/components/AmbulanceFinder';
+import { LocationTracker } from '@/components/LocationTracker';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, User, Bell, LayoutDashboard, QrCode as QrIcon, Eye, AlertTriangle, MapPin, Activity, Settings } from "lucide-react";
+import { Shield, User, LayoutDashboard, QrCode as QrIcon, AlertTriangle, MapPin, Activity, Settings, Ambulance, Zap } from "lucide-react";
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { useUser } from '@/firebase';
@@ -95,30 +96,28 @@ export default function Dashboard() {
       <main className="p-4 md:p-8 max-w-5xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8">
         <div className="lg:col-span-8 space-y-8">
           <section className="space-y-1">
-            <h2 className="text-2xl md:text-3xl font-bold font-headline">Welcome back, {profile.name.split(' ')[0]}</h2>
+            <h2 className="text-2xl md:text-3xl font-bold font-headline">Welcome, {profile.name.split(' ')[0]}</h2>
             <p className="text-sm text-muted-foreground flex items-center gap-2">
               Status: <span className="text-green-500 font-bold flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" /> Protected</span>
-              <span className="opacity-20">|</span>
-              Mode: <span className="text-primary font-bold uppercase">{profile.persona.replace('_', ' ')}</span>
             </p>
           </section>
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4 bg-card/40 h-12 p-1 rounded-2xl mb-8 overflow-x-auto no-scrollbar">
               <TabsTrigger value="monitor" className="rounded-xl data-[state=active]:bg-background text-xs md:text-sm">
-                <Activity className="h-4 w-4 mr-2 hidden sm:inline" />
+                <Activity className="h-4 w-4 mr-1 hidden sm:inline" />
                 Safety
               </TabsTrigger>
-              <TabsTrigger value="proactive" className="rounded-xl data-[state=active]:bg-background text-xs md:text-sm">
-                <Eye className="h-4 w-4 mr-2 hidden sm:inline" />
-                Vision
+              <TabsTrigger value="rescue" className="rounded-xl data-[state=active]:bg-background text-xs md:text-sm">
+                <Ambulance className="h-4 w-4 mr-1 hidden sm:inline" />
+                Rescue
               </TabsTrigger>
               <TabsTrigger value="id" className="rounded-xl data-[state=active]:bg-background text-xs md:text-sm">
-                <QrIcon className="h-4 w-4 mr-2 hidden sm:inline" />
+                <QrIcon className="h-4 w-4 mr-1 hidden sm:inline" />
                 Med-ID
               </TabsTrigger>
               <TabsTrigger value="profile" className="rounded-xl data-[state=active]:bg-background text-xs md:text-sm">
-                <User className="h-4 w-4 mr-2 hidden sm:inline" />
+                <User className="h-4 w-4 mr-1 hidden sm:inline" />
                 Profile
               </TabsTrigger>
             </TabsList>
@@ -127,18 +126,16 @@ export default function Dashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <AccidentMonitor profile={profile} />
                 <div className="space-y-6">
+                  <LocationTracker />
+                  <AmbulanceFinder />
                   <HazardReporter />
-                  <Card className="bg-card/20 border-border/20 p-6">
-                    <h3 className="font-bold mb-2 flex items-center gap-2"><MapPin className="h-4 w-4 text-primary" /> Active Safety Zone</h3>
-                    <p className="text-sm text-muted-foreground">You are currently in a high-density safety network. Emergency response time estimated at &lt; 4 minutes.</p>
-                  </Card>
+                  <Link href="/demo">
+                    <Card className="bg-primary/10 border-primary/30 p-6 hover:bg-primary/20 transition-colors cursor-pointer">
+                      <h3 className="font-bold mb-1 flex items-center gap-2"><Zap className="h-4 w-4 text-primary" /> SOS Demo Mode</h3>
+                      <p className="text-sm text-muted-foreground">Simulate crash detection and see the full emergency response system.</p>
+                    </Card>
+                  </Link>
                 </div>
-              </div>
-            </TabsContent>
-            
-            <TabsContent value="proactive" className="animate-in fade-in slide-in-from-bottom-4 duration-300 outline-none">
-              <div className="max-w-2xl mx-auto">
-                <DrowsinessMonitor />
               </div>
             </TabsContent>
             
