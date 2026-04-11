@@ -90,18 +90,18 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen bg-mesh p-6 flex flex-col max-w-lg mx-auto w-full">
-      <header className="flex items-center justify-between mb-8 animate-in fade-in slide-in-from-top duration-500">
+    <div className="min-h-screen bg-mesh p-4 md:p-6 flex flex-col max-w-lg mx-auto w-full">
+      <header className="flex items-center justify-between mb-6 md:mb-8 animate-in fade-in slide-in-from-top duration-500">
         <div className="flex items-center gap-2">
           <div className="relative">
-            <Shield className="text-primary h-6 w-6 relative z-10" />
+            <Shield className="text-primary h-5 w-5 md:h-6 md:w-6 relative z-10" />
             <div className="absolute inset-0 bg-primary/20 blur-xl animate-pulse" />
           </div>
-          <span className="font-bold">SafeSignal</span>
+          <span className="font-bold text-sm md:text-base">SafeSignal</span>
         </div>
         <div className="flex gap-1">
           {Array.from({ length: TOTAL_STEPS }).map((_, i) => (
-            <div key={i} className={`h-1.5 rounded-full transition-all duration-700 ease-out ${step > i ? 'w-10 bg-primary shadow-lg shadow-primary/50' : 'w-8 bg-muted'}`} />
+            <div key={i} className={`h-1.5 rounded-full transition-all duration-700 ease-out ${step > i ? 'w-8 md:w-10 bg-primary shadow-lg shadow-primary/50' : 'w-6 md:w-8 bg-muted'}`} />
           ))}
         </div>
       </header>
@@ -204,15 +204,15 @@ export default function Onboarding() {
           </Card>
         )}
 
-        <div className="flex gap-4 pt-4 mt-auto animate-in slide-in-from-bottom duration-500 delay-500">
+        <div className="flex gap-3 md:gap-4 pt-4 mt-auto animate-in slide-in-from-bottom duration-500 delay-500">
           {step > 1 && (
-            <Button type="button" variant="outline" size="lg" className="w-24 rounded-2xl h-14 transition-all duration-300 hover:scale-105 active:scale-95" onClick={() => setStep(s => s - 1)}>
+            <Button type="button" variant="outline" size="lg" className="w-20 md:w-24 rounded-2xl h-12 md:h-14 text-sm md:text-base transition-all duration-300 hover:scale-105 active:scale-95" onClick={() => setStep(s => s - 1)}>
               Back
             </Button>
           )}
-          <Button type="submit" size="lg" className="flex-1 rounded-2xl h-14 text-lg font-bold transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40" disabled={isSubmitting}>
-            {isSubmitting && <Loader2 className="h-5 w-5 animate-spin mr-2" />}
-            {step < TOTAL_STEPS ? (<>Continue <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" /></>) : 'Activate SafeSignal'}
+          <Button type="submit" size="lg" className="flex-1 rounded-2xl h-12 md:h-14 text-base md:text-lg font-bold transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-primary/30 hover:shadow-xl hover:shadow-primary/40" disabled={isSubmitting}>
+            {isSubmitting && <Loader2 className="h-4 w-4 md:h-5 md:w-5 animate-spin mr-2" />}
+            {step < TOTAL_STEPS ? (<>Continue <ArrowRight className="ml-2 h-4 w-4 md:h-5 md:w-5 transition-transform group-hover:translate-x-1" /></>) : 'Activate SafeSignal'}
           </Button>
         </div>
       </form>
