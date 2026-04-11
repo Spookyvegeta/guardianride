@@ -2,6 +2,7 @@
 
 import { useWorkerProfile } from '@/lib/store';
 import { AccidentMonitor } from '@/components/AccidentMonitor';
+import { AmbulanceFinder } from '@/components/AmbulanceFinder';
 import { QRCard } from '@/components/QRCard';
 import { ProfileView } from '@/components/ProfileView';
 import { Button } from "@/components/ui/button";
@@ -115,6 +116,7 @@ export default function Dashboard() {
 
           <TabsContent value="monitor" className="space-y-6 animate-in fade-in slide-in-from-bottom duration-500 outline-none">
             <AccidentMonitor profile={profile} />
+            <AmbulanceFinder />
             <Link href="/demo">
               <Card className="bg-primary/10 border-primary/30 p-5 hover:bg-primary/20 transition-all duration-300 cursor-pointer hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/20 active:scale-[0.98]">
                 <h3 className="font-bold flex items-center gap-2"><Zap className="h-4 w-4 text-primary" /> SOS Demo Mode</h3>

@@ -54,21 +54,21 @@ export function AmbulanceFinder() {
   };
 
   return (
-    <Card className="border-border/40 bg-card/30 backdrop-blur-md">
-      <CardContent className="p-6 space-y-5">
+    <Card className="border-border/40 bg-card/30 backdrop-blur-md transition-all duration-500 hover:shadow-lg hover:shadow-red-500/5 animate-in fade-in slide-in-from-bottom duration-500">
+      <CardContent className="p-4 md:p-6 space-y-4 md:space-y-5">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-red-500/20 text-red-500">
-            <Ambulance className="h-6 w-6" />
+          <div className="p-2 rounded-xl bg-red-500/20 text-red-500 transition-all duration-300 hover:scale-110">
+            <Ambulance className="h-5 w-5 md:h-6 md:w-6" />
           </div>
           <div>
-            <h3 className="font-bold text-lg">Emergency Assistance</h3>
-            <p className="text-sm text-muted-foreground">Find nearby help using your location</p>
+            <h3 className="font-bold text-base md:text-lg">Emergency Assistance</h3>
+            <p className="text-xs md:text-sm text-muted-foreground">Find nearby help using your location</p>
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-2 md:gap-3">
           <Button
-            className="h-14 rounded-2xl bg-red-600 hover:bg-red-700 font-bold gap-2 text-xs w-full"
+            className="h-12 md:h-14 rounded-xl md:rounded-2xl bg-red-600 hover:bg-red-700 font-bold gap-2 text-xs md:text-sm w-full transition-all duration-300 hover:scale-105 active:scale-95 shadow-lg shadow-red-600/30"
             onClick={() => findNearby('ambulance')}
             disabled={loading !== null}
           >
@@ -79,7 +79,7 @@ export function AmbulanceFinder() {
           </Button>
           <Button
             variant="outline"
-            className="h-14 rounded-2xl font-bold gap-2 text-xs border-red-500/30 text-red-400 hover:bg-red-500/10 w-full"
+            className="h-12 md:h-14 rounded-xl md:rounded-2xl font-bold gap-2 text-xs md:text-sm border-red-500/30 text-red-400 hover:bg-red-500/10 w-full transition-all duration-300 hover:scale-105 active:scale-95"
             onClick={() => findNearby('hospital')}
             disabled={loading !== null}
           >
@@ -91,19 +91,19 @@ export function AmbulanceFinder() {
         </div>
 
         <div>
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-3">Quick Dial</p>
+          <p className="text-[9px] md:text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-2 md:mb-3">Quick Dial</p>
           <div className="grid grid-cols-4 gap-2">
             {EMERGENCY_NUMBERS.map(({ label, number, color }) => (
               <a
                 key={number}
                 href={`tel:${number}`}
-                className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-background/40 border border-border/10 hover:bg-background/60 transition-colors"
+                className="flex flex-col items-center gap-1.5 md:gap-2 p-2 md:p-3 rounded-xl md:rounded-2xl bg-background/40 border border-border/10 hover:bg-background/60 transition-all duration-300 hover:scale-105 active:scale-95"
               >
-                <div className={`${color} w-8 h-8 rounded-full flex items-center justify-center`}>
-                  <Phone className="h-3.5 w-3.5 text-white" />
+                <div className={`${color} w-7 h-7 md:w-8 md:h-8 rounded-full flex items-center justify-center shadow-lg`}>
+                  <Phone className="h-3 w-3 md:h-3.5 md:w-3.5 text-white" />
                 </div>
-                <span className="text-xs font-bold">{number}</span>
-                <span className="text-[9px] text-muted-foreground uppercase tracking-widest">{label}</span>
+                <span className="text-xs md:text-sm font-bold">{number}</span>
+                <span className="text-[8px] md:text-[9px] text-muted-foreground uppercase tracking-widest text-center leading-tight">{label}</span>
               </a>
             ))}
           </div>
