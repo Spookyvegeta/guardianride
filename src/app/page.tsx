@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from "@/components/ui/button";
-import { Shield, MapPin, QrCode, HeartPulse, ChevronRight, Activity, Eye, AlertCircle } from "lucide-react";
+import { Shield, MapPin, QrCode, HeartPulse, ChevronRight, Activity, AlertCircle } from "lucide-react";
 
 export default function Home() {
   return (
@@ -49,26 +49,38 @@ export default function Home() {
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <FeatureCard 
-            icon={<Eye className="text-primary h-6 w-6" />}
-            title="Drowsiness Guard"
-            description="AI vision detects micro-sleep and fatigue in drivers, triggering loud proactive alerts."
-          />
-          <FeatureCard 
-            icon={<AlertCircle className="text-accent h-6 w-6" />}
-            title="Panic Mode"
-            description="Instantly notify family and emergency services with a single silent trigger."
-          />
-          <FeatureCard 
-            icon={<Activity className="text-primary h-6 w-6" />}
-            title="Accident Engine"
-            description="Auto-detects crashes and falls using high-frequency on-device motion sensors."
-          />
-          <FeatureCard 
-            icon={<QrCode className="text-accent h-6 w-6" />}
-            title="Offline Medical ID"
-            description="Helmet-scan QR code provides your vital medical data to first responders instantly."
-          />
+          <Link href="/dashboard">
+            <FeatureCard 
+              icon={<Activity className="text-primary h-6 w-6" />}
+              title="Accident Engine"
+              description="Auto-detects crashes and falls using high-frequency on-device motion sensors."
+              clickable
+            />
+          </Link>
+          <Link href="/dashboard">
+            <FeatureCard 
+              icon={<AlertCircle className="text-accent h-6 w-6" />}
+              title="Panic Mode"
+              description="Instantly notify family and emergency services with a single silent trigger."
+              clickable
+            />
+          </Link>
+          <Link href="/dashboard">
+            <FeatureCard 
+              icon={<QrCode className="text-primary h-6 w-6" />}
+              title="Offline Medical ID"
+              description="Helmet-scan QR code provides your vital medical data to first responders instantly."
+              clickable
+            />
+          </Link>
+          <Link href="/reports">
+            <FeatureCard 
+              icon={<MapPin className="text-accent h-6 w-6" />}
+              title="Safety Heatmap"
+              description="View regional accident data and high-risk zones to plan safer routes."
+              clickable
+            />
+          </Link>
         </section>
 
         <footer className="text-center space-y-4 pt-8">
@@ -89,14 +101,19 @@ export default function Home() {
   );
 }
 
-function FeatureCard({ icon, title, description }: { icon: React.ReactNode, title: string, description: string }) {
+function FeatureCard({ icon, title, description, clickable }: { icon: React.ReactNode, title: string, description: string, clickable?: boolean }) {
   return (
-    <div className="p-6 rounded-3xl bg-card/40 border border-border/40 backdrop-blur-sm space-y-3 hover:bg-card/60 transition-colors group">
+    <div className={`p-6 rounded-3xl bg-card/40 border border-border/40 backdrop-blur-sm space-y-3 transition-all duration-300 group ${clickable ? 'hover:bg-card/60 hover:scale-105 hover:shadow-lg hover:shadow-primary/10 active:scale-95 cursor-pointer' : 'hover:bg-card/60'}`}>
       <div className="bg-background/60 w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
         {icon}
       </div>
       <h3 className="text-xl font-bold font-headline">{title}</h3>
       <p className="text-sm text-muted-foreground leading-relaxed">{description}</p>
+      {clickable && (
+        <div className="flex items-center gap-1 text-xs font-bold text-primary uppercase tracking-widest pt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          Explore <ChevronRight className="h-3 w-3" />
+        </div>
+      )}
     </div>
   );
 }
