@@ -57,7 +57,7 @@ export default function Dashboard() {
     <div className="min-h-screen bg-mesh pb-24 md:pb-6">
       <header className="p-4 md:p-6 sticky top-0 bg-background/50 backdrop-blur-md z-30 border-b border-border/20 animate-in fade-in slide-in-from-top duration-500">
         <div className="max-w-3xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
+          <Link href="/dashboard" className="flex items-center gap-3 transition-all duration-300 hover:scale-105 active:scale-95">
             <div className="bg-primary p-1.5 rounded-lg shadow-lg shadow-primary/20 relative animate-in zoom-in duration-500">
               <Shield className="text-white h-5 w-5 relative z-10" />
               <div className="absolute inset-0 bg-primary/30 rounded-lg blur-md animate-pulse" />
@@ -70,7 +70,7 @@ export default function Dashboard() {
                 </span>
               </p>
             </div>
-          </div>
+          </Link>
           <div className="flex items-center gap-2 animate-in fade-in slide-in-from-right duration-500 delay-200">
             <Button
               variant="ghost" size="icon"
